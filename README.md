@@ -27,7 +27,7 @@ cd procgen
 python setup.py install
 cd ..
 
-git clone https://github.com/minqi/gym-minigrid .git
+git clone https://github.com/maximecb/gym-minigrid.git
 cd gym-minigrid 
 pip install -e .
 cd ..
