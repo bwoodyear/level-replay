@@ -6,6 +6,7 @@
 
 import os
 from functools import partial
+import numpy as np
 
 import gym
 import torch
@@ -21,6 +22,7 @@ from level_replay.level_sampler import LevelSampler
 class SeededSubprocVecEnv(SubprocVecEnv):
     def __init__(self, env_fns):
         super(SubprocVecEnv, self).__init__(env_fns, )
+        self.waiting = None
 
     def seed_async(self, seed, index):
         self._assert_not_closed()
@@ -67,6 +69,7 @@ class SeededSubprocVecEnv(SubprocVecEnv):
         self.level_seed_async(index)
         return self.level_seed_wait(index)
 
+
 class TransposeObs(gym.ObservationWrapper):
     def __init__(self, env=None):
         """
@@ -76,7 +79,7 @@ class TransposeObs(gym.ObservationWrapper):
 
 
 class TransposeImageProcgen(TransposeObs):
-    def __init__(self, env=None, op=[0, 3, 2, 1]):
+    def __init__(self, env=None, op=(0, 3, 2, 1)):
         """
         Transpose observation space for images
         """
@@ -125,7 +128,7 @@ class VecPyTorchProcgen(VecEnvWrapper):
             for e in range(self.venv.num_envs):
                 seed = self.level_sampler.sample('sequential')
                 seeds[e] = seed
-                self.venv.seed(seed,e)
+                self.venv.seed(seed, e)
 
         obs = self.venv.reset()
         if obs.shape[1] != 3:

@@ -16,6 +16,7 @@ import torch.nn as nn
 
 from level_replay.utils import init
 
+
 class FixedCategorical(torch.distributions.Categorical):
     """
     Categorical distribution object

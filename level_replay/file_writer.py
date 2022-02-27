@@ -53,14 +53,13 @@ def gather_metadata() -> Dict:
 
 
 class FileWriter:
-    def __init__(
-        self,
-        xpid: str = None,
-        xp_args: dict = None,
-        rootdir: str = "~/logs",
-        symlink_to_latest: bool = True,
-        seeds=None,
-    ):
+    def __init__(self,
+                 xpid: str = None,
+                 xp_args: dict = None,
+                 rootdir: str = "~/logs",
+                 symlink_to_latest: bool = True,
+                 seeds=None):
+
         if not xpid:
             # Make unique id.
             xpid = "{proc}_{unixtime}".format(

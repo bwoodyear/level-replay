@@ -4,17 +4,17 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-from collections import namedtuple
 import numpy as np
 import torch
 
-class LevelSampler():
-    def __init__(
-        self, seeds, obs_space, action_space, num_actors=1, 
-        strategy='random', replay_schedule='fixed', score_transform='power',
-        temperature=1.0, eps=0.05,
-        rho=0.2, nu=0.5, alpha=1.0, 
-        staleness_coef=0, staleness_transform='power', staleness_temperature=1.0):
+
+class LevelSampler:
+    def __init__(self, seeds, obs_space, action_space, num_actors=1,
+                 strategy='random', replay_schedule='fixed', score_transform='power',
+                 temperature=1.0, eps=0.05,
+                 rho=0.2, nu=0.5, alpha=1.0,
+                 staleness_coef=0, staleness_transform='power', staleness_temperature=1.0):
+
         self.obs_space = obs_space
         self.action_space = action_space
         self.strategy = strategy
@@ -38,10 +38,10 @@ class LevelSampler():
         self.partial_seed_steps = np.zeros((num_actors, len(seeds)), dtype=np.int64)
         self.seed_staleness = np.array([0.]*len(seeds), dtype=np.float)
 
-        self.next_seed_index = 0 # Only used for sequential strategy
+        self.next_seed_index = 0  # Only used for sequential strategy
 
     def seed_range(self):
-        return (int(min(self.seeds)), int(max(self.seeds)))
+        return int(min(self.seeds)), int(max(self.seeds))
 
     def _init_seed_index(self, seeds):
         self.seeds = np.array(seeds, dtype=np.int64)
@@ -72,7 +72,7 @@ class LevelSampler():
     def update_seed_score(self, actor_index, seed_idx, score, num_steps):
         score = self._partial_update_seed_score(actor_index, seed_idx, score, num_steps, done=True)
 
-        self.unseen_seed_weights[seed_idx] = 0. # No longer unseen
+        self.unseen_seed_weights[seed_idx] = 0.  # No longer unseen
 
         old_score = self.seed_scores[seed_idx]
         self.seed_scores[seed_idx] = (1 - self.alpha)*old_score + self.alpha*score
@@ -85,7 +85,7 @@ class LevelSampler():
         merged_score = partial_score + (score - partial_score)*num_steps/float(running_num_steps)
 
         if done:
-            self.partial_seed_scores[actor_index][seed_idx] = 0. # zero partial score, partial num_steps
+            self.partial_seed_scores[actor_index][seed_idx] = 0.  # zero partial score, partial num_steps
             self.partial_seed_steps[actor_index][seed_idx] = 0
         else:
             self.partial_seed_scores[actor_index][seed_idx] = merged_score
@@ -100,16 +100,19 @@ class LevelSampler():
 
         return (-torch.exp(episode_logits)*episode_logits).sum(-1).mean().item()/max_entropy
 
-    def _average_least_confidence(self, **kwargs):
+    @staticmethod
+    def _average_least_confidence(**kwargs):
         episode_logits = kwargs['episode_logits']
         return (1 - torch.exp(episode_logits.max(-1, keepdim=True)[0])).mean().item()
 
-    def _average_min_margin(self, **kwargs):
+    @staticmethod
+    def _average_min_margin(**kwargs):
         episode_logits = kwargs['episode_logits']
         top2_confidence = torch.exp(episode_logits.topk(2, dim=-1)[0])
-        return 1 - (top2_confidence[:,0] - top2_confidence[:,1]).mean().item()
+        return 1 - (top2_confidence[:, 0] - top2_confidence[:, 1]).mean().item()
 
-    def _average_gae(self, **kwargs):
+    @staticmethod
+    def _average_gae(**kwargs):
         returns = kwargs['returns']
         value_preds = kwargs['value_preds']
 
@@ -117,7 +120,8 @@ class LevelSampler():
 
         return advantages.mean().item()
 
-    def _average_value_l1(self, **kwargs):
+    @staticmethod
+    def _average_value_l1(**kwargs):
         returns = kwargs['returns']
         value_preds = kwargs['value_preds']
 
@@ -125,7 +129,8 @@ class LevelSampler():
 
         return advantages.abs().mean().item()
 
-    def _one_step_td_error(self, **kwargs):
+    @staticmethod
+    def _one_step_td_error(**kwargs):
         rewards = kwargs['rewards']
         value_preds = kwargs['value_preds']
 
@@ -143,29 +148,29 @@ class LevelSampler():
         policy_logits = rollouts.action_log_dist
         done = ~(rollouts.masks > 0)
         total_steps, num_actors = policy_logits.shape[:2]
-        num_decisions = len(policy_logits)
 
         for actor_index in range(num_actors):
-            done_steps = done[:,actor_index].nonzero()[:total_steps,0]
+            done_steps = done[:, actor_index].nonzero()[:total_steps, 0]
             start_t = 0
 
             for t in done_steps:
-                if not start_t < total_steps: break
+                if not start_t < total_steps:
+                    break
 
-                if t == 0: # if t is 0, then this done step caused a full update of previous seed last cycle
+                if t == 0:  # if t is 0, then this done step caused a full update of previous seed last cycle
                     continue 
 
-                seed_t = level_seeds[start_t,actor_index].item()
+                seed_t = level_seeds[start_t, actor_index].item()
                 seed_idx_t = self.seed2index[seed_t]
 
                 score_function_kwargs = {}
-                episode_logits = policy_logits[start_t:t,actor_index]
+                episode_logits = policy_logits[start_t:t, actor_index]
                 score_function_kwargs['episode_logits'] = torch.log_softmax(episode_logits, -1)
 
                 if self.requires_value_buffers:
-                    score_function_kwargs['returns'] = rollouts.returns[start_t:t,actor_index]
-                    score_function_kwargs['rewards'] = rollouts.rewards[start_t:t,actor_index]
-                    score_function_kwargs['value_preds'] = rollouts.value_preds[start_t:t,actor_index]
+                    score_function_kwargs['returns'] = rollouts.returns[start_t:t, actor_index]
+                    score_function_kwargs['rewards'] = rollouts.rewards[start_t:t, actor_index]
+                    score_function_kwargs['value_preds'] = rollouts.value_preds[start_t:t, actor_index]
 
                 score = score_function(**score_function_kwargs)
                 num_steps = len(episode_logits)
@@ -174,17 +179,17 @@ class LevelSampler():
                 start_t = t.item()
 
             if start_t < total_steps:
-                seed_t = level_seeds[start_t,actor_index].item()
+                seed_t = level_seeds[start_t, actor_index].item()
                 seed_idx_t = self.seed2index[seed_t]
 
                 score_function_kwargs = {}
-                episode_logits = policy_logits[start_t:,actor_index]
+                episode_logits = policy_logits[start_t:, actor_index]
                 score_function_kwargs['episode_logits'] = torch.log_softmax(episode_logits, -1)
 
                 if self.requires_value_buffers:
-                    score_function_kwargs['returns'] = rollouts.returns[start_t:,actor_index]
-                    score_function_kwargs['rewards'] = rollouts.rewards[start_t:,actor_index]
-                    score_function_kwargs['value_preds'] = rollouts.value_preds[start_t:,actor_index]
+                    score_function_kwargs['returns'] = rollouts.returns[start_t:, actor_index]
+                    score_function_kwargs['rewards'] = rollouts.rewards[start_t:, actor_index]
+                    score_function_kwargs['value_preds'] = rollouts.value_preds[start_t:, actor_index]
 
                 score = score_function(**score_function_kwargs)
                 num_steps = len(episode_logits)
@@ -261,7 +266,7 @@ class LevelSampler():
 
     def sample_weights(self):
         weights = self._score_transform(self.score_transform, self.temperature, self.seed_scores)
-        weights = weights * (1-self.unseen_seed_weights) # zero out unseen levels
+        weights = weights * (1-self.unseen_seed_weights)  # zero out unseen levels
 
         z = np.sum(weights)
         if z > 0:
@@ -285,7 +290,7 @@ class LevelSampler():
         if transform == 'max':
             weights = np.zeros_like(scores)
             scores = scores[:]
-            scores[self.unseen_seed_weights > 0] = -float('inf') # only argmax over seen levels
+            scores[self.unseen_seed_weights > 0] = -float('inf')  # only argmax over seen levels
             argmax = np.random.choice(np.flatnonzero(np.isclose(scores, scores.max())))
             weights[argmax] = 1.
         elif transform == 'eps_greedy':
