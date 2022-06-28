@@ -6,6 +6,17 @@ Prioritized Level Replay is a simple method for improving generalization and sam
 
 ![PLR algorithm overview](docs/plr-algo-overview.png)
 
+
+## My install process
+
+
+```
+git clone https://github.com/bwoodyear/level-replay
+conda env update --name level-replay --file level-replay/environment.yml
+conda activate level-replay
+```
+
+
 ## Requirements
 ```
 conda create -n level-replay python=3.8
