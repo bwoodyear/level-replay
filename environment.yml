@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.8
   - pip
+  - cmake
   - pandas
   - matplotlib
   - seaborn
@@ -11,10 +12,9 @@ dependencies:
   - scipy==1.4.1
   - pycparser
   - pip:
-      - git
       - git+https://github.com/minqi/baselines.git
-      - git+https://github.com/minqi/procgen.git
-      - git+https://github.com/maximecb/gym-minigrid.git
+      - git+https://github.com/bwoodyear/procgen.git
+#      - git+https://github.com/maximecb/gym-minigrid.git
       - tqdm>=4.46.1
       - wandb
       - tensorflow==2.2.1

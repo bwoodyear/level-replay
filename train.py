@@ -36,6 +36,8 @@ def train(args, seeds):
     device = torch.device("cuda:0" if args.cuda else "cpu")
     if 'cuda' in device.type:
         print('Using CUDA\n')
+    else:
+        print('Not using CUDA\n')
 
     torch.set_num_threads(1)
 
@@ -71,7 +73,7 @@ def train(args, seeds):
             temperature=args.level_replay_temperature,
             eps=args.level_replay_eps,
             rho=args.level_replay_rho,
-            nu=args.level_replay_nu, 
+            nu=args.level_replay_nu,
             alpha=args.level_replay_alpha,
             staleness_coef=args.staleness_coef,
             staleness_transform=args.staleness_transform,
@@ -85,16 +87,16 @@ def train(args, seeds):
         distribution_mode=args.distribution_mode,
         paint_vel_info=args.paint_vel_info,
         level_sampler_args=level_sampler_args)
-    
-    is_minigrid = args.env_name.startswith('MiniGrid')
 
-    actor_critic = model_for_env_name(args, envs)       
+    # is_minigrid = args.env_name.startswith('MiniGrid')
+
+    actor_critic = model_for_env_name(args, envs)
     actor_critic.to(device)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
-                                envs.observation_space.shape, envs.action_space,
-                                actor_critic.recurrent_hidden_state_size)
-        
+                              envs.observation_space.shape, envs.action_space,
+                              actor_critic.recurrent_hidden_state_size)
+
     batch_size = int(args.num_processes * args.num_steps / args.num_mini_batch)
 
     def checkpoint():
@@ -147,7 +149,7 @@ def train(args, seeds):
                     obs_id, rollouts.recurrent_hidden_states[step], rollouts.masks[step])
                 action_log_prob = action_log_dist.gather(-1, action)
 
-            # Obser reward and next obs
+            # Observe reward and next obs
             obs, reward, done, infos = envs.step(action)
 
             # Reset all done levels by sampling from level sampler
@@ -166,8 +168,8 @@ def train(args, seeds):
                  for info in infos])
 
             rollouts.insert(
-                obs, recurrent_hidden_states, 
-                action, action_log_prob, action_log_dist, 
+                obs, recurrent_hidden_states,
+                action, action_log_prob, action_log_dist,
                 value, reward, masks, bad_masks, level_seeds)
 
         with torch.no_grad():
@@ -175,7 +177,7 @@ def train(args, seeds):
             next_value = actor_critic.get_value(
                 obs_id, rollouts.recurrent_hidden_states[-1],
                 rollouts.masks[-1]).detach()
-            
+
         rollouts.compute_returns(next_value, args.gamma, args.gae_lambda)
 
         # Update level sampler
@@ -201,9 +203,10 @@ def train(args, seeds):
             eval_episode_rewards = evaluate(args, actor_critic, args.num_test_seeds, device)
 
             logging.info(f"\nEvaluating on {args.num_test_seeds} train levels...\n  ")
-            train_eval_episode_rewards = evaluate(args, actor_critic, args.num_test_seeds, device, start_level=0, num_levels=args.num_train_seeds, seeds=seeds)
+            train_eval_episode_rewards = evaluate(args, actor_critic, args.num_test_seeds, device, start_level=0,
+                                                  num_levels=args.num_train_seeds, seeds=seeds)
 
-            stats = { 
+            stats = {
                 "step": total_num_steps,
                 "pg_loss": action_loss,
                 "value_loss": value_loss,
@@ -216,10 +219,10 @@ def train(args, seeds):
                 "train_eval:median_episode_return": np.median(train_eval_episode_rewards),
                 "sps": sps,
             }
-            if is_minigrid:
-                stats["train:success_rate"] = np.mean(np.array(episode_rewards) > 0)
-                stats["train_eval:success_rate"] = np.mean(np.array(train_eval_episode_rewards) > 0)
-                stats["test:success_rate"] = np.mean(np.array(eval_episode_rewards) > 0)
+            # if is_minigrid:
+            #     stats["train:success_rate"] = np.mean(np.array(episode_rewards) > 0)
+            #     stats["train_eval:success_rate"] = np.mean(np.array(train_eval_episode_rewards) > 0)
+            #     stats["test:success_rate"] = np.mean(np.array(eval_episode_rewards) > 0)
 
             if j == num_updates - 1:
                 logging.info(f"\nLast update: Evaluating on {args.num_test_seeds} test levels...\n  ")
@@ -227,7 +230,7 @@ def train(args, seeds):
 
                 mean_final_eval_episode_rewards = np.mean(final_eval_episode_rewards)
                 median_final_eval_episide_rewards = np.median(final_eval_episode_rewards)
-                
+
                 plogger.log_final_test_eval({
                     'num_test_seeds': args.final_num_test_seeds,
                     'mean_episode_return': mean_final_eval_episode_rewards,
@@ -247,8 +250,9 @@ def train(args, seeds):
         if last_checkpoint_time is None:
             last_checkpoint_time = timer()
         try:
+            # Save every 10 min.
             if j == num_updates - 1 or \
-                (args.save_interval > 0 and timer() - last_checkpoint_time > args.save_interval * 60):  # Save every 10 min.
+                    (args.save_interval > 0 and timer() - last_checkpoint_time > args.save_interval * 60):
                 checkpoint()
                 last_checkpoint_time = timer()
         except KeyboardInterrupt:
@@ -262,20 +266,22 @@ def generate_seeds(num_seeds, base_seed=0):
 def load_seeds(seed_path):
     seed_path = os.path.expandvars(os.path.expanduser(seed_path))
     seeds = open(seed_path).readlines()
-    return [int(s) for s in seeds] 
+    return [int(s) for s in seeds]
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
+    input_args = parser.parse_args()
 
-    if args.verbose:
+    if input_args.verbose:
         logging.getLogger().setLevel(logging.INFO)
     else:
         logging.disable(logging.CRITICAL)
 
-    if args.seed_path:
-        train_seeds = load_seeds(args.seed_path)
+    if input_args.seed_path:
+        train_seeds = load_seeds(input_args.seed_path)
     else:
-        train_seeds = generate_seeds(args.num_train_seeds)
+        train_seeds = generate_seeds(input_args.num_train_seeds)
 
-    train(args, train_seeds)
+    train(input_args, train_seeds)
+
+    print("\nRUN complete\n")

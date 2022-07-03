@@ -11,9 +11,13 @@ Prioritized Level Replay is a simple method for improving generalization and sam
 
 
 ```
-git clone https://github.com/bwoodyear/level-replay
+git clone git@github.com:bwoodyear/level-replay.git
 conda env update --name level-replay --file level-replay/environment.yml
 conda activate level-replay
+git clone git@github.com:bwoodyear/baselines.git
+pip install -e baselines
+git clone git@github.com:bwoodyear/procgen.git
+pip install -e procgen
 ```
 
 
@@ -57,12 +61,13 @@ project(codegen)
 ## Examples
 ### Train PPO with value-based level reply with rank prioritization on BigFish
 ```
-python -m train --env_name bigfish \
---num_processes=64 \
+python -m train --env_name coinrun \
+--num_processes=32 \
 --level_replay_strategy='value_l1' \
 --level_replay_score_transform='rank' \
 --level_replay_temperature=0.1 \
---staleness_coef=0.1
+--staleness_coef=0.1 \
+--num_env_steps=100000
 ```
 
 ## Procgen Benchmark results
