@@ -68,6 +68,7 @@ python -m train --env_name coinrun \
 --level_replay_temperature=0.1 \
 --staleness_coef=0.1 \
 --num_env_steps=100000
+--verbose
 ```
 
 ## Procgen Benchmark results
