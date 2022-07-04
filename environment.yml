@@ -12,11 +12,11 @@ dependencies:
   - scipy==1.4.1
   - pycparser
   - pip:
-      - git+https://github.com/minqi/baselines.git
-      - git+https://github.com/bwoodyear/procgen.git
+      - tensorflow==2.2.1
+#      - git+https://github.com/minqi/baselines.git
+#      - git+https://github.com/bwoodyear/procgen.git
 #      - git+https://github.com/maximecb/gym-minigrid.git
       - tqdm>=4.46.1
       - wandb
-      - tensorflow==2.2.1
       - torch
       - torchvision
